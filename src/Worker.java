@@ -1,33 +1,57 @@
-import java.util.Collections;
 import java.util.Random;
 
 public class Worker extends Thread {
     Random rand = new Random();
 
     private char label;
-    private ConveyorBelt buffer;
+    private ConveyorBelt incomingBuffer, outgoingBuffer;
 
     private Widget widget;
     private int widgetCount = 1;
 
-    // messages
-    private final String retrievingMsg = "Worker " + label + " is retrieving " + widget.getName() + " from the belt";
-    private final String workingMsg = "Worker " + label + " is working on " + widget.getName() + " from the belt";
-    private final String placingMsg = "Worker " + label + " is placing " + widget.getName() + " from the belt";
+    // info messages
+    private String retrievingMsg;
+    private String workingMsg;
+    private String placingMsg;
+    // warning messages
+    private String fullWarning;
+    private String emptyWarning;
 
-    public Worker(char label, ConveyorBelt buffer) {
+    public Worker(char label, ConveyorBelt in, ConveyorBelt out) {
+        super(String.valueOf(label));
         this.label = label;
-        this.buffer = buffer;
+        this.incomingBuffer = in;
+        this.outgoingBuffer = out;
 
+//        if(label == 'A' && widgetCount <= 24) {
+//            widget = new Widget("widget" + widgetCount);
+//            setMessages();
+//        }
+    }
+
+    private void createWidget() {
+        //extra failsafe
         if(label == 'A') {
             widget = new Widget("widget" + widgetCount);
         }
     }
 
-    // picking up from conveyor belt
-    public void consume() {
-        System.out.println(retrievingMsg);
-        buffer.receive();
+    /**
+     * Attempt consume operation
+     * @return whether consume was successful
+     */
+    public boolean consume() {
+        System.out.print("");
+//        System.out.println("___________");
+//        incomingBuffer.displayContents(label);
+        if(incomingBuffer.isEmpty()){
+//            System.out.println(emptyWarning);
+            return false;
+        }
+
+        //pickup widget
+        widget = incomingBuffer.receive();
+        System.out.println(Messages.getRetrievingMsg(label, widget));
 
         //set values
         switch (label) {
@@ -35,47 +59,67 @@ public class Worker extends Thread {
             case 'C' -> widget.setMyC();
             case 'D' -> widget.setMyD();
         }
+        return true;
     }
 
     // production rate
     public void doWork() throws InterruptedException {
-        System.out.println(workingMsg);
-        //sleep
+        System.out.println(Messages.getWorkingMsg(label, widget));
+        widgetCount++;
+        //simulate work via sleep
         int ms = (int) (1000 * Math.random());
         Thread.sleep(ms);
     }
 
     // passing onto conveyor belt
-    public void produce() {
-        //if buffer full, wait()
-        if(buffer.send(widget)) {
+    public void produce() throws InterruptedException {
+        //send widget
+        outgoingBuffer.send(widget, label);
+        System.out.println(Messages.getPlacingMsg(label, widget));
 
-        }
-        System.out.println(placingMsg);
-
-
-        if(label == 'A') {
-            widgetCount++;
-        }
+        //increment widget count
+//        if(label == 'A') {
+//            widgetCount++;
+//        }
     }
 
     // begin operation
     public void run() {
-        // pick up from conveyor if you aren't worker A and set values
-        if(label != 'A') {
-            consume();
-        }
+        while(true) {
+            if(widgetCount == 25)
+                return;
+//            if(label == 'B')
+//                System.out.println("Widget count: " +widgetCount);
+            // Step 1 - create or consume
+            if(label == 'A') {
+//                if(widgetCount == 24) {
+//                    System.out.println(widgetCount + " widgets created!");
+//                    return;
+//                }
+                createWidget();
+            }else {
+                System.out.println(Messages.getEmptyWarning(label));
+                while(true) {
+                    if(consume())
+                        break;
+                }
+            }
 
-        // all workers sleep and display working message
-        try {
-            doWork();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+            // Step 2 - mimic doing work by thread sleeping
+            try {
+                doWork();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 
-        // place onto conveyor belt if you aren't worker D
-        if(label != 'D') {
-            produce();
+            // Step 3 - produce
+            if (label != 'D') {
+                try {
+                    produce();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

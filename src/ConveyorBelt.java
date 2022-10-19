@@ -15,38 +15,58 @@ import java.util.*;
 
 public class ConveyorBelt {
 
-    private Vector queue;
+    private List<Widget> queue;
     private final int MAX = 3;
 
     public ConveyorBelt() {
-        queue = new Vector();
+        queue = new ArrayList<>();
     }
 
+    public void displayContents(char l) {
+        for (Widget w : queue) {
+            System.out.println(l + ": " + w.getName());
+        }
+    }
     /*
      * This implements a non-blocking send
      */
-    public boolean send(Object item) {
-        if(queue.size() >= MAX) {
-            return false;
+    public synchronized void send(Widget item, char label) throws InterruptedException {
+        if(isFull()) {
+            System.out.println(Messages.getFullWarning(label, item));
+            displayContents(label);
+            wait();
         }
 
-        queue.addElement(item);
-        return true;
+//        queue.addElement(item);
+        queue.add(item);
     }
 
     /*
      * This implements a non-blocking receive
      */
-    public Object receive() {
-        Object item;
-
+    public synchronized Widget receive() {
         if (queue.size() == 0)
             return null;
-        else {
-            item = queue.firstElement();
-            queue.removeElementAt(0);
 
-            return item;
-        }
+        Widget item;
+        boolean wasFull = isFull();
+
+        item = queue.get(0);
+        queue.remove(0);
+
+        if(wasFull)
+            notify();
+
+        return item;
     }
+
+    public boolean isFull() {
+        return queue.size() == MAX;
+    }
+
+    public boolean isEmpty() {
+        return queue.isEmpty();
+    }
+
+    public int getSize() { return queue.size(); }
 }
