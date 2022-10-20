@@ -1,3 +1,4 @@
+// Ali Mohamed
 /**
  * MessageQueue.java
  *
@@ -22,18 +23,12 @@ public class ConveyorBelt {
         queue = new ArrayList<>();
     }
 
-    public void displayContents(char l) {
-        for (Widget w : queue) {
-            System.out.println(l + ": " + w.getName());
-        }
-    }
     /*
      * This implements a non-blocking send
      */
     public synchronized void send(Widget item, char label) throws InterruptedException {
         if(isFull()) {
             System.out.println(Messages.getFullWarning(label, item));
-            displayContents(label);
             wait();
         }
 
@@ -67,6 +62,4 @@ public class ConveyorBelt {
     public boolean isEmpty() {
         return queue.isEmpty();
     }
-
-    public int getSize() { return queue.size(); }
 }
